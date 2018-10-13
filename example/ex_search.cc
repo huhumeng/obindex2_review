@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
         
         std::cout << "--- --- Processing image " << i << " --- --- " << std::endl;
         
-        
+
         // Loading and describing the image
         cv::Mat img = cv::imread(filenames[i]);
         std::vector<cv::KeyPoint> kps;
@@ -87,10 +87,12 @@ int main(int argc, char** argv) {
 
         // Filtering matches according to the ratio test
         std::vector<cv::DMatch> matches;
-        for (unsigned m = 0; m < matches_feats.size(); m++) {
-        if (matches_feats[m][0].distance < matches_feats[m][1].distance * 0.8) {
-            matches.push_back(matches_feats[m][0]);
-        }
+        for(unsigned m = 0; m < matches_feats.size(); m++){
+            
+            if(matches_feats[m][0].distance < matches_feats[m][1].distance * 0.8){
+                matches.push_back(matches_feats[m][0]);
+            }
+
         }
 
         std::vector<obindex2::ImageMatch> image_matches;
@@ -101,53 +103,53 @@ int main(int argc, char** argv) {
         // Showing results
         for (int j = 0; j < std::min(5, static_cast<int>(image_matches.size()));
                                                                             j++) {
-        std::cout << "Cand: " << image_matches[j].image_id <<  ", " <<
-                    "Score: " << image_matches[j].score << std::endl;
+            std::cout << "Cand: "  << image_matches[j].image_id <<  ", " <<
+                         "Score: " << image_matches[j].score    << std::endl;
         }
 
-        std::cout << "Total features found in the image: " <<
-                                            kps.size() << std::endl;
-        std::cout << "Total matches found against the index: " <<
-                                            matches.size() << std::endl;
-        std::cout << "Total index size BEFORE UPDATE: " <<
-                                            index.numDescriptors() << std::endl;
+        std::cout << "Total features found in the image: " << kps.size() << std::endl;
+
+        std::cout << "Total matches found against the index: " << matches.size() << std::endl;
+
+        std::cout << "Total index size BEFORE UPDATE: " << index.numDescriptors() << std::endl;
+
         // Updating the index
         // Matched descriptors are used to update the index and the remaining ones
         // are added as new visual words
         index.addImage(i, kps, dscs, matches);
-        std::cout << "Total index size AFTER UPDATE: " <<
-                                            index.numDescriptors() << std::endl;
+
+        std::cout << "Total index size AFTER UPDATE: " << index.numDescriptors() << std::endl;
 
         // Reindexing features every 500 images
-        if (i % 250 == 0) {
-        std::cout << "------ Rebuilding indices ------" << std::endl;
-        index.rebuild();
+        if(i % 250 == 0){
+
+            std::cout << "------ Rebuilding indices ------" << std::endl;
+            index.rebuild();
         }
 
         // Showing matchings with the previous image
-        std::unordered_map<unsigned, obindex2::PointMatches> point_matches;
-        index.getMatchings(kps, matches, &point_matches);
-        obindex2::PointMatches pmatches = point_matches[i - 1];
+        // std::unordered_map<unsigned, obindex2::PointMatches> point_matches;
+        // index.getMatchings(kps, matches, &point_matches);
+        // obindex2::PointMatches pmatches = point_matches[i - 1];
 
-        std::cout << "Matchings with the previous image: " << pmatches.query.size();
+        // std::cout << "Matchings with the previous image: " << pmatches.query.size();
 
-        for (unsigned j = 0; j < pmatches.query.size(); j++) {
-          cv::Point2f q = pmatches.query[j];
-          cv::Point2f t = pmatches.train[j];
-          cv::line(img, q, t, cv::Scalar(0, 255, 0));
-          cv::circle(img, q, 3, cv::Scalar(0, 0, 255), -1);
-          cv::circle(img, t, 3, cv::Scalar(255, 0, 0), -1);
-        }
+        // for (unsigned j = 0; j < pmatches.query.size(); j++) {
+        //     cv::Point2f q = pmatches.query[j];
+        //     cv::Point2f t = pmatches.train[j];
+        //     cv::line(img, q, t, cv::Scalar(0, 255, 0));
+        //     cv::circle(img, q, 3, cv::Scalar(0, 0, 255), -1);
+        //     cv::circle(img, t, 3, cv::Scalar(255, 0, 0), -1);
+        // }
 
-        cv::imshow("Matchings", img);
-        cv::waitKey(0);
+        // cv::imshow("Matchings", img);
+        // cv::waitKey(0);
     }
 
     auto end = std::chrono::steady_clock::now();
     auto diff = end - start;
 
-    std::cout << std::chrono::duration<double, std::milli>(diff).count()
-        << " ms" << std::endl;
+    std::cout << std::chrono::duration<double, std::milli>(diff).count() << " ms" << std::endl;
 
     return 0;  // Correct test
 }

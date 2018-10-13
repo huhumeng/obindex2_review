@@ -15,22 +15,33 @@ class BinaryTree {
 public:
 
     // Constructors
+
+    // @param dset
+    // @param tree_id
+    // @param k
+    // @param s
     explicit BinaryTree(BinaryDescriptorSetPtr dset,
                         const unsigned tree_id = 0,
                         const unsigned k = 16,
                         const unsigned s = 150);
+    
     virtual ~BinaryTree();
 
     // Methods
     void buildTree();
     void deleteTree();
+
+    // 从根节点开始生成搜索队列
     unsigned traverseFromRoot(BinaryDescriptorPtr q,
                                 NodeQueuePtr pq,
                                 DescriptorQueuePtr r);
+
+    // 从某个节点生成搜索队列
     void traverseFromNode(BinaryDescriptorPtr q,
                             BinaryTreeNodePtr n,
                             NodeQueuePtr pq,
                             DescriptorQueuePtr r);
+                            
     BinaryTreeNodePtr searchFromRoot(BinaryDescriptorPtr q);
     BinaryTreeNodePtr searchFromNode(BinaryDescriptorPtr q,
                                     BinaryTreeNodePtr n);
@@ -54,6 +65,8 @@ private:
     unsigned s_;
     unsigned k_2_;
     NodeSet nset_;
+
+    // 描述子与节点之间的索引
     std::unordered_map<BinaryDescriptorPtr, BinaryTreeNodePtr> desc_to_node_;
 
     // Tree statistics

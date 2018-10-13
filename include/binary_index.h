@@ -67,9 +67,9 @@ public:
 
     // @para K: 将树分为多少叉
     // @para S: 叶节点的最大数目
-    // @para t:
+    // @para t: Tree amount
     // @para merge_policy: 更新描述子的方式
-    // @para purge_descriptors
+    // @para purge_descriptors: 删除不稳定的描述子
     // @para min_feat_apps
     explicit ImageIndex(const unsigned k = 16,
                         const unsigned s = 150,
@@ -125,27 +125,34 @@ private:
     BinaryDescriptorSet dset_;
 
     // param:
-    unsigned k_;
-    unsigned s_;
-    unsigned t_;
-    unsigned init_;
-    unsigned nimages_;
-    unsigned ndesc_;
-    MergePolicy merge_policy_;
-    bool purge_descriptors_;
-    unsigned min_feat_apps_;
+    unsigned k_;                // K
+    unsigned s_;                // S
+    unsigned t_;                // Tree amount
+    unsigned init_;             // 是否初始化
+    unsigned nimages_;          // 图像数目
+    unsigned ndesc_;            // 描述子数目
+    MergePolicy merge_policy_;  // 融合策略
+    bool purge_descriptors_;    // 删除不稳定描述子
+    unsigned min_feat_apps_;    // 
 
+    // t颗树
     std::vector<BinaryTreePtr> trees_;
+    
+    // 描述子与InvIndexItem的索引
     std::unordered_map<BinaryDescriptorPtr, std::vector<InvIndexItem>> inv_index_;
 
+    // 描述子的反索引
     std::unordered_map<BinaryDescriptorPtr, unsigned> desc_to_id_;
     
+    // 描述子的索引
     std::unordered_map<unsigned, BinaryDescriptorPtr> id_to_desc_;
     
+    // 最近添加的描述子
     std::list<BinaryDescriptorPtr> recently_added_;
 
     void initTrees();
     
+    // 返回最近的knn个描述子, 和它们的距离
     void searchDescriptor(BinaryDescriptorPtr q,
                           std::vector<BinaryDescriptorPtr>* neigh,
                           std::vector<double>* distances,

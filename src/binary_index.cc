@@ -38,6 +38,7 @@ void ImageIndex::addImage(const unsigned image_id,
         // 从cv::Mat生成一个智能指针d
         BinaryDescriptorPtr d = std::make_shared<BinaryDescriptor>(desc);
         
+        // 插入到树中
         insertDescriptor(d);
 
         // Creating the inverted index item
@@ -143,27 +144,33 @@ void ImageIndex::searchImages(const cv::Mat& descs,
                               const std::vector<cv::DMatch>& gmatches,
                               std::vector<ImageMatch>* img_matches,
                               bool sort){
+    
     // Initializing the resulting structure
     img_matches->resize(nimages_);
+    
     for(unsigned i = 0; i < nimages_; i++){
         img_matches->at(i).image_id = i;
     }
 
     // Counting the number of each word in the current document
     std::unordered_map<int, int> nwi_map;
+    
     for(unsigned match_index = 0; match_index < gmatches.size(); match_index++){
+        
         int train_idx = gmatches[match_index].trainIdx;
+        
         // Updating nwi_map, number of occurrences of a word in an image.
-        if(nwi_map.count(train_idx)){
+        
+        if(nwi_map.count(train_idx))
             nwi_map[train_idx]++;
-        }
-        else{
+        else
             nwi_map[train_idx] = 1;
-        }
+        
     }
 
     // We process all the matchings again to increase the scores
     for(unsigned match_index = 0; match_index < gmatches.size(); match_index++){
+        
         int train_idx = gmatches[match_index].trainIdx;
         BinaryDescriptorPtr desc = id_to_desc_[train_idx];
 
@@ -172,9 +179,10 @@ void ImageIndex::searchImages(const cv::Mat& descs,
 
         // Computing the IDF term
         std::unordered_set<unsigned> nw;
-        for(unsigned i = 0; i < inv_index_[desc].size(); i++){
+        
+        for(unsigned i = 0; i < inv_index_[desc].size(); i++)
             nw.insert(inv_index_[desc][i].image_id);
-        }
+        
 
         double idf = log(static_cast<double>(nimages_) / nw.size());
 
@@ -193,23 +201,28 @@ void ImageIndex::searchImages(const cv::Mat& descs,
 }
 
 void ImageIndex::initTrees(){
+    
     // Creating the trees
+    
+    // 包装成智能指针
     BinaryDescriptorSetPtr dset_ptr = std::make_shared<BinaryDescriptorSet>(dset_);
 
+    // 需要生成t个树
     for(unsigned i = 0; i < t_; i++){
-        BinaryTreePtr tree_ptr =
-                std::make_shared<BinaryTree>(dset_ptr, i, k_, s_);
+        
+        BinaryTreePtr tree_ptr = std::make_shared<BinaryTree>(dset_ptr, i, k_, s_);
         trees_.push_back(tree_ptr);
     }
 }
 
-void ImageIndex::searchDescriptors(
-                              const cv::Mat& descs,
-                              std::vector<std::vector<cv::DMatch> >* matches,
-                              const unsigned knn,
-                              const unsigned checks){
+void ImageIndex::searchDescriptors(const cv::Mat& descs,
+                                   std::vector<std::vector<cv::DMatch>>* matches,
+                                   const unsigned knn,
+                                   const unsigned checks){
     matches->clear();
+
     for(int i = 0; i < descs.rows; i++){
+        
         // Creating the corresponding descriptor
         cv::Mat desc = descs.row(i);
         BinaryDescriptorPtr d = std::make_shared<BinaryDescriptor>(desc);
@@ -217,6 +230,7 @@ void ImageIndex::searchDescriptors(
         // Searching the descriptor in the index
         std::vector<BinaryDescriptorPtr> neighs;
         std::vector<double> dists;
+        
         searchDescriptor(d, &neighs, &dists, knn, checks);
 
         // Translating the resulting matches to CV structures
@@ -240,18 +254,21 @@ void ImageIndex::deleteDescriptor(const unsigned desc_id){
     deleteDescriptor(d);
 }
 
-void ImageIndex::searchDescriptor(BinaryDescriptorPtr q,
-                                  std::vector<BinaryDescriptorPtr>* neigh,
-                                  std::vector<double>* distances,
+void ImageIndex::searchDescriptor(BinaryDescriptorPtr q,                    // input  query describtor
+                                  std::vector<BinaryDescriptorPtr>* neigh,  // output neighbour decrib
+                                  std::vector<double>* distances,           // output distance
                                   unsigned knn,
                                   unsigned checks){
+    
     unsigned points_searched = 0;
+    
     NodePriorityQueue pq;
     DescriptorQueue r;
 
     // Initializing search structures
     std::vector<NodeQueuePtr> pqs;
     std::vector<DescriptorQueuePtr> rs;
+    
     for(unsigned i = 0; i < trees_.size(); i++){
         NodeQueuePtr tpq = std::make_shared<NodeQueue>();
         pqs.push_back(tpq);
@@ -268,14 +285,20 @@ void ImageIndex::searchDescriptor(BinaryDescriptorPtr q,
 
     //  Gathering results from each individual search
     std::unordered_set<BinaryDescriptorPtr> already_added;
+
     for(unsigned i = 0; i < trees_.size(); i++){
+        
         // Obtaining descriptor nodes
         unsigned r_size = rs[i]->size();
+        
         for(unsigned j = 0; j < r_size; j++){
+
             DescriptorQueueItem r_item = rs[i]->get(j);
-            std::pair<std::unordered_set<BinaryDescriptorPtr>::iterator,
-                        bool > result;
+
+            std::pair<std::unordered_set<BinaryDescriptorPtr>::iterator, bool> result;
+            
             result = already_added.insert(r_item.desc);
+            
             if(result.second){
                 r.push(r_item);
                 points_searched++;
@@ -285,17 +308,21 @@ void ImageIndex::searchDescriptor(BinaryDescriptorPtr q,
 
     // Continuing the search if not enough descriptors have been checked
     if(points_searched < checks){
+        
         // Gathering the next nodes to search
         for(unsigned i = 0; i < trees_.size(); i++){
+            
             // Obtaining priority queue nodes
             unsigned pq_size = pqs[i]->size();
+            
             for(unsigned j = 0; j < pq_size; j++){
                 pq.push(pqs[i]->get(j));
             }
         }
 
         NodePriorityQueuePtr pq_ptr = std::make_shared<NodePriorityQueue>(pq);
-        while (points_searched < checks && !pq.empty()){
+        
+        while(points_searched < checks && !pq.empty()){
             // Get the closest node to continue the search
             NodeQueueItem n = pq.top();
             pq.pop();
@@ -322,28 +349,33 @@ void ImageIndex::searchDescriptor(BinaryDescriptorPtr q,
             }
         }
     }
+
     r.sort();
 
     // Returning the required number of descriptors descriptors
     neigh->clear();
     distances->clear();
     unsigned ndescs = std::min(knn, r.size());
+    
     for(unsigned i = 0; i < ndescs; i++){
         DescriptorQueueItem d = r.get(i);
 
         neigh->push_back(d.desc);
         distances->push_back(d.dist);
     }
+
 }
 
 void ImageIndex::insertDescriptor(BinaryDescriptorPtr q){
     
     // 插入到unordered_set中
     dset_.insert(q);
-    
+
     desc_to_id_[q] = ndesc_;
     id_to_desc_[ndesc_] = q;
     ndesc_++;
+
+    // 加入到最近添加的描述子中, 做进一步的筛选
     recently_added_.push_back(q);
 
     // Indexing the descriptor inside each tree
@@ -395,9 +427,10 @@ void ImageIndex::getMatchings(
 }
 
 void ImageIndex::purgeDescriptors(const unsigned curr_img){
+    
     auto it = recently_added_.begin();
 
-    while (it != recently_added_.end()){
+    while(it != recently_added_.end()){
         BinaryDescriptorPtr desc = *it;
         // We assess if at least three images have passed since creation
         if((curr_img - inv_index_[desc][0].image_id) > 1){

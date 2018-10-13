@@ -33,7 +33,7 @@ void BinaryTree::buildTree(){
     root_ = std::make_shared<BinaryTreeNode>();
     nset_.insert(root_);
 
-    // Generating a new set with the descriptor's ids
+    // Generating a new copy set with the descriptor's ids 
     BinaryDescriptorSet descs = *dset_;
 
     buildNode(descs, root_);
@@ -42,6 +42,7 @@ void BinaryTree::buildTree(){
 void BinaryTree::buildNode(BinaryDescriptorSet dset, BinaryTreeNodePtr root){
     
     // Validate if this should be a leaf node
+    // 如果描述子数量小于s, 全部分配当前的叶节点中
     if(dset.size() < s_){
         
         // We set the previous node as a leaf
@@ -57,6 +58,8 @@ void BinaryTree::buildNode(BinaryDescriptorSet dset, BinaryTreeNodePtr root){
             desc_to_node_[d] = root;
         }
     }
+
+    // 否则当前节点应该再被划分为K个子节点
     else{
         
         // This node should be split
@@ -64,16 +67,24 @@ void BinaryTree::buildNode(BinaryDescriptorSet dset, BinaryTreeNodePtr root){
         std::vector<BinaryDescriptorPtr> new_centers;
         std::vector<BinaryDescriptorSet> assoc_descs(k_);
 
+        // 随机分成k个子节点
         for (unsigned i = 0; i < k_; i++){
             
             // Selecting a new center
+            // 随机选取一个描述子
             BinaryDescriptorPtr desc = *std::next(dset.begin(), rand() % dset.size());
             
+            // 将描述子插入到中心中
             new_centers.push_back(desc);
+
+            // 将此描述子放入到子节点组中
             assoc_descs[i].insert(desc);
+            
+            // 从总的节点数中删除掉此节点
             dset.erase(desc);
         }
-
+        
+        // 将每一个描述子放入到不同的节点中
         // Associating the remaining descriptors to the new centers
         for (auto it = dset.begin(); it != dset.end(); it++){
             
@@ -92,21 +103,25 @@ void BinaryTree::buildNode(BinaryDescriptorSet dset, BinaryTreeNodePtr root){
             assert(best_center != -1);
             assoc_descs[best_center].insert(d);
         }
-      
+
+        // 去除掉所有的描述子
         dset.clear();
 
         // Creating a new tree node for each new cluster
         for (unsigned i = 0; i < k_; i++){
-
+            
+            // 生成一个新的节点
             BinaryTreeNodePtr node = std::make_shared<BinaryTreeNode>(false, new_centers[i], root);
 
             // Linking this node with its root
+            // 将其附于父节点上
             root->addChildNode(node);
 
             // Storing the reference to this node
             nset_.insert(node);
 
             // Recursively apply the algorithm
+            // 迭代进行此操作
             buildNode(assoc_descs[i], node);
         }
     }
@@ -127,8 +142,12 @@ void BinaryTree::deleteTree(){
 unsigned BinaryTree::traverseFromRoot(BinaryDescriptorPtr q,
                                       NodeQueuePtr pq,
                                       DescriptorQueuePtr r){
+
     nvisited_nodes_ = 0;
+
+    // 生成搜索的队列
     traverseFromNode(q, root_, pq, r);
+
     return nvisited_nodes_;
 }
 
@@ -142,9 +161,9 @@ void BinaryTree::traverseFromNode(BinaryDescriptorPtr q,
     if(n->isLeaf()){
       
         // Adding points to R
-        std::unordered_set<BinaryDescriptorPtr>* descs = n->getChildrenDescriptors();
+        BinaryDescriptorSet* descs = n->getChildrenDescriptors();
         
-        for(auto it = (*descs).begin(); it != (*descs).end(); it++){
+        for(auto it = descs->begin(); it != descs->end(); it++){
             
             BinaryDescriptorPtr d = *it;
             double dist = obindex2::BinaryDescriptor::distHamming(*q, *d);
@@ -152,11 +171,12 @@ void BinaryTree::traverseFromNode(BinaryDescriptorPtr q,
             DescriptorQueueItem item(dist, d);
             r->push(item);
         }
-    } 
+    }
     else{
 
         // Search continues
-        std::unordered_set<BinaryTreeNodePtr>* nodes = n->getChildrenNodes();
+        NodeSet* nodes = n->getChildrenNodes();
+
         int best_node = -1;
         double min_dist = DBL_MAX;
 
@@ -166,10 +186,14 @@ void BinaryTree::traverseFromNode(BinaryDescriptorPtr q,
         
         // Computing distances to nodes
         
-        for(auto it = (*nodes).begin(); it != (*nodes).end(); it++){
+        for(auto it = nodes->begin(); it != nodes->end(); it++){
+            
             BinaryTreeNodePtr bn = *it;
+            
             double dist = bn->distance(q);
+            
             NodeQueueItem item(dist, tree_id_, bn);
+            
             items.push_back(item);
 
             if(dist < min_dist){
@@ -183,7 +207,7 @@ void BinaryTree::traverseFromNode(BinaryDescriptorPtr q,
         assert(best_node != -1);
 
         // Adding remaining nodes to pq
-        for (unsigned i = 0; i < items.size(); i++){
+        for(unsigned i = 0; i < items.size(); i++){
             
             // Is it the best node?
             if(i == static_cast<unsigned>(best_node)){
